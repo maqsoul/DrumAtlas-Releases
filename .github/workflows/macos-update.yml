@@ -1,0 +1,51 @@
+name: macOS update
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - DrumAtlas-source.tar.gz
+      - .github/workflows/macos-update.yml
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-15
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: juce-framework/JUCE
+          ref: 9.0.3
+          path: dependencies/JUCE
+          persist-credentials: false
+      - name: Build native Apple Silicon update
+        run: |
+          mkdir source
+          tar -xzf DrumAtlas-source.tar.gz -C source --strip-components=1
+          cmake -S source -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DJUCE_DIR="$GITHUB_WORKSPACE/dependencies/JUCE" \
+            -DDRUMATLAS_ACTIVATION_URL=https://drumatlas-activation.miras-maksat.workers.dev/v1/activate \
+            -DDRUMATLAS_UPDATE_URL=https://raw.githubusercontent.com/maqsoul/DrumAtlas-Releases/main/stable.json \
+            -DDRUMATLAS_TESTS=ON
+          cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_Standalone DrumAtlasEditTests
+          ctest --test-dir build --output-on-failure -R '^pitch-tempo-license$' --timeout 120
+      - name: Package update without model weights
+        run: |
+          version=$(sed -n 's/^project(DrumAtlas VERSION \([^ ]*\).*/\1/p' source/CMakeLists.txt)
+          DRUMATLAS_BUILD_DIR="$GITHUB_WORKSPACE/build" DRUMATLAS_VERSION="$version" bash source/Installer/package-macos-update.sh
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Stage release for signed feed publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$VERSION"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "DrumAtlas $VERSION" \
+              --notes "Update for an existing full DrumAtlas installation. Preserves AI models. Close your DAW before installation. macOS Apple Silicon package is not Apple Developer ID signed or notarized."
+          fi
+          gh release upload "$tag" "build/DrumAtlas-$VERSION-arm64-Update.pkg" "build/DrumAtlas-$VERSION-arm64-Update.pkg.sha256"
