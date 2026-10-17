@@ -41,7 +41,7 @@ jobs:
           cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_AU DrumAtlas_Standalone \
             DrumAtlasSmoke DrumAtlasMusicTests DrumAtlasProfileTests DrumAtlasMigrationTests DrumAtlasEditTests AtlasWorker DrumAtlasHostTests
       - name: Verify offline modules and isolated scanner
-        run: ctest --test-dir build --output-on-failure -R '^(music-core|music-profiles|library-migration|pitch-tempo-license|isolated-vst3-scan|interface-layout)$' --timeout 120
+        run: ctest --test-dir build --output-on-failure -R '^(music-core|music-profiles|library-migration|offline-vst3-render|pitch-tempo-license|isolated-vst3-scan|interface-layout)$' --timeout 120
       - name: Validate AU and build development installer
         run: |
           DRUMATLAS_BUILD_DIR="$GITHUB_WORKSPACE/build" DRUMATLAS_VERSION=1.0.0 bash source/Installer/package-macos-update.sh
