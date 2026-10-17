@@ -19,17 +19,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "e7e1fbfe817e5201c917be4adb09802df28825dfdf2d58de60eff9d9bdab7b7f  DrumAtlas-dev-source.tar.gz" | sha256sum --check
-          gh run watch 39024846421 --exit-status
-          gh run download 39024846421 --dir artifacts
-          cp DrumAtlas-dev-source.tar.gz DrumAtlas-Preview-20261017-2-Source.tar.gz
+          echo "adb1dfd6022be70b756216205c5dcf8e328c74c267071b3476dbda58f5a6abce  DrumAtlas-dev-source.tar.gz" | sha256sum --check
+          gh run watch 39027184652 --exit-status
+          gh run download 39027184652 --dir artifacts
+          cp DrumAtlas-dev-source.tar.gz DrumAtlas-Preview-20261017-3-Source.tar.gz
           cat > preview-notes.md <<'NOTES'
           Development preview of ongoing DrumAtlas 2.0 work. Not the completed specification.
-          Adds aligned WAV stems, grouped or per track, at 44.1/48/96 kHz and 16/24 bit PCM, shared normalization gain and checksummed manifests. Includes previous Quick Beat features. Fixed two-second tail, one-shot/original synthesis only; no external VST bounce.
-          Source revision: 9fa60de. Visible plugin version: 1.0.0.
+          Adds aligned WAV stems, grouped or per track, at 44.1/48/96 kHz and 16/24 bit PCM, shared normalization gain and checksummed manifests. Includes previous Quick Beat features. Adds isolated VST3 instrument rendering, saved sound state, latency compensation and reported instrument tails. Windows: 13/13 tests passed and real Serum 2 render verified. No realtime hosting or third-party FX chains.
+          Source revision: 1216cc4. Visible plugin version: 1.0.0.
           Mac: AU, VST3 and Standalone for Apple Silicon and Intel; serial activation endpoint configured. No Developer ID/notarization or real Logic Pro session test.
           Update over an existing installation; replaces DrumAtlas binaries. Back up DAW projects and close the DAW before installing. AI model weights are not included.
           Full instrument hosting, AI Chat, Sound Finder/Designer, advanced reference analysis and other specification items remain incomplete.
           Stable Update feed is unchanged. This preview is opt-in.
           NOTES
-          gh release create v2.0.0-preview.20261017.2 --target "$GITHUB_SHA" --draft --prerelease --title "DrumAtlas 1.0.0 — stem export preview 17 October 2026" --notes-file preview-notes.md DrumAtlas-Preview-20261017-2-Source.tar.gz artifacts/DrumAtlas-development-arm64/*.pkg artifacts/DrumAtlas-development-arm64/*.sha256 artifacts/DrumAtlas-development-x86_64/*.pkg artifacts/DrumAtlas-development-x86_64/*.sha256
+          gh release create v2.0.0-preview.20261017.3 --target "$GITHUB_SHA" --draft --prerelease --title "DrumAtlas 1.0.0 — VST render preview 17 October 2026" --notes-file preview-notes.md DrumAtlas-Preview-20261017-3-Source.tar.gz artifacts/DrumAtlas-development-arm64/*.pkg artifacts/DrumAtlas-development-arm64/*.sha256 artifacts/DrumAtlas-development-x86_64/*.pkg artifacts/DrumAtlas-development-x86_64/*.sha256
