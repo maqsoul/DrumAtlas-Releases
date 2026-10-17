@@ -1,0 +1,52 @@
+name: DrumAtlas development macOS
+on:
+  workflow_dispatch:
+  push:
+    branches: [development-v2]
+    paths: [DrumAtlas-dev-source.tar.gz, .github/workflows/macos-development.yml]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: juce-framework/JUCE
+          ref: 9.0.3
+          path: dependencies/JUCE
+          persist-credentials: false
+      - name: Extract development source
+        run: |
+          mkdir source
+          tar -xzf DrumAtlas-dev-source.tar.gz -C source --strip-components=1
+      - name: Build AU, VST3, Standalone and tests
+        run: |
+          cmake -S source -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DJUCE_DIR="$GITHUB_WORKSPACE/dependencies/JUCE" \
+            -DDRUMATLAS_TESTS=ON
+          cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_AU DrumAtlas_Standalone \
+            DrumAtlasMusicTests DrumAtlasProfileTests DrumAtlasMigrationTests DrumAtlasEditTests AtlasWorker DrumAtlasHostTests
+      - name: Verify offline modules and isolated scanner
+        run: ctest --test-dir build --output-on-failure -R '^(music-core|music-profiles|library-migration|pitch-tempo-license|isolated-vst3-scan)$' --timeout 120
+      - name: Validate AU and build development installer
+        run: |
+          DRUMATLAS_BUILD_DIR="$GITHUB_WORKSPACE/build" DRUMATLAS_VERSION=1.0.0 bash source/Installer/package-macos-update.sh
+      - name: Upload development build and evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: DrumAtlas-development-arm64
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/auval.txt
+            build/DrumAtlas-1.0.0-arm64-Update.pkg
+            build/DrumAtlas-1.0.0-arm64-Update.pkg.sha256
+          retention-days: 7
+          if-no-files-found: warn
+# No release/feed mutation, no model weights, no signing keys or customer data.
+# The package is an offline development check, not a publicly supported release.
