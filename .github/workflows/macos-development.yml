@@ -36,7 +36,8 @@ jobs:
         run: |
           cmake -S source -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DJUCE_DIR="$GITHUB_WORKSPACE/dependencies/JUCE" \
-            -DDRUMATLAS_TESTS=ON
+            -DDRUMATLAS_TESTS=ON \
+            -DDRUMATLAS_ACTIVATION_URL=https://drumatlas-activation.miras-maksat.workers.dev/v1/activate
           cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_AU DrumAtlas_Standalone \
             DrumAtlasSmoke DrumAtlasMusicTests DrumAtlasProfileTests DrumAtlasMigrationTests DrumAtlasEditTests AtlasWorker DrumAtlasHostTests
       - name: Verify offline modules and isolated scanner
@@ -58,4 +59,4 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 # No release/feed mutation, no model weights, no signing keys or customer data.
-# The package is an offline development check, not a publicly supported release.
+# The package supports activation but is a development build, not a stable release.
