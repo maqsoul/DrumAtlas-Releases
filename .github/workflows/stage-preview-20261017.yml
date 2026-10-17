@@ -13,12 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 41d6356c4b99db319f47a004f9b58d291d294553
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Require successful Mac validation and stage draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo "e7e1fbfe817e5201c917be4adb09802df28825dfdf2d58de60eff9d9bdab7b7f  DrumAtlas-dev-source.tar.gz" | sha256sum --check
           gh run watch 39024846421 --exit-status
           gh run download 39024846421 --dir artifacts
           cp DrumAtlas-dev-source.tar.gz DrumAtlas-Preview-20261017-2-Source.tar.gz
@@ -31,6 +32,4 @@ jobs:
           Full instrument hosting, AI Chat, Sound Finder/Designer, advanced reference analysis and other specification items remain incomplete.
           Stable Update feed is unchanged. This preview is opt-in.
           NOTES
-          gh release create v2.0.0-preview.20261017.2 --target 41d6356c4b99db319f47a004f9b58d291d294553 --draft --prerelease --title "DrumAtlas 1.0.0 — stem export preview 17 October 2026" --notes-file preview-notes.md DrumAtlas-Preview-20261017-2-Source.tar.gz artifacts/DrumAtlas-development-arm64/*.pkg artifacts/DrumAtlas-development-arm64/*.sha256 artifacts/DrumAtlas-development-x86_64/*.pkg artifacts/DrumAtlas-development-x86_64/*.sha256
-
-
+          gh release create v2.0.0-preview.20261017.2 --target "$GITHUB_SHA" --draft --prerelease --title "DrumAtlas 1.0.0 — stem export preview 17 October 2026" --notes-file preview-notes.md DrumAtlas-Preview-20261017-2-Source.tar.gz artifacts/DrumAtlas-development-arm64/*.pkg artifacts/DrumAtlas-development-arm64/*.sha256 artifacts/DrumAtlas-development-x86_64/*.pkg artifacts/DrumAtlas-development-x86_64/*.sha256
