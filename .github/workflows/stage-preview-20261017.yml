@@ -13,23 +13,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 49c30a954cf64da126874e41274a66e97c577ee8
+          ref: 41d6356
           persist-credentials: false
       - name: Require successful Mac validation and stage draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run watch 39023462665 --exit-status
-          gh run download 39023462665 --dir artifacts
-          cp DrumAtlas-dev-source.tar.gz DrumAtlas-Preview-20261017-Source.tar.gz
+          gh run watch 39024846421 --exit-status
+          gh run download 39024846421 --dir artifacts
+          cp DrumAtlas-dev-source.tar.gz DrumAtlas-Preview-20261017-2-Source.tar.gz
           cat > preview-notes.md <<'NOTES'
           Development preview of ongoing DrumAtlas 2.0 work. Not the completed specification.
-          Includes weighted genre/mood profiles, MIDI note editing, validated offline commands and streaming WAV export without the 120-second export limit.
-          Source revision: 02ab04a. Visible plugin version: 1.0.0.
+          Adds aligned WAV stems, grouped or per track, at 44.1/48/96 kHz and 16/24 bit PCM, shared normalization gain and checksummed manifests. Includes previous Quick Beat features. Fixed two-second tail, one-shot/original synthesis only; no external VST bounce.
+          Source revision: 9fa60de. Visible plugin version: 1.0.0.
           Mac: AU, VST3 and Standalone for Apple Silicon and Intel; serial activation endpoint configured. No Developer ID/notarization or real Logic Pro session test.
           Update over an existing installation; replaces DrumAtlas binaries. Back up DAW projects and close the DAW before installing. AI model weights are not included.
           Full instrument hosting, AI Chat, Sound Finder/Designer, advanced reference analysis and other specification items remain incomplete.
           Stable Update feed is unchanged. This preview is opt-in.
           NOTES
-          gh release create v2.0.0-preview.20261017 --target 49c30a954cf64da126874e41274a66e97c577ee8 --draft --prerelease --title "DrumAtlas 1.0.0 — development preview 17 October 2026" --notes-file preview-notes.md DrumAtlas-Preview-20261017-Source.tar.gz artifacts/DrumAtlas-development-arm64/*.pkg artifacts/DrumAtlas-development-arm64/*.sha256 artifacts/DrumAtlas-development-x86_64/*.pkg artifacts/DrumAtlas-development-x86_64/*.sha256
+          gh release create v2.0.0-preview.20261017.2 --target 41d6356 --draft --prerelease --title "DrumAtlas 1.0.0 — stem export preview 17 October 2026" --notes-file preview-notes.md DrumAtlas-Preview-20261017-2-Source.tar.gz artifacts/DrumAtlas-development-arm64/*.pkg artifacts/DrumAtlas-development-arm64/*.sha256 artifacts/DrumAtlas-development-x86_64/*.pkg artifacts/DrumAtlas-development-x86_64/*.sha256
 
