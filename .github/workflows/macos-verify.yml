@@ -1,0 +1,70 @@
+name: Verify packaged macOS installers
+on:
+  workflow_dispatch:
+  push:
+    branches: [packaging-20261108]
+    paths: [.github/workflows/macos-verify.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 110
+    steps:
+      - name: Wait for package from current build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 100); do
+            count=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42419737792/artifacts --jq ".artifacts | map(select(.name == \"DrumAtlas-macOS-$TARGET_ARCH\")) | length")
+            if [ "$count" -gt 0 ]; then exit 0; fi
+            status=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42419737792/jobs --jq ".jobs[] | select(.name | contains(\"$TARGET_ARCH\")) | .status")
+            if [ "$status" = completed ]; then echo 'Package job completed without an artifact'; exit 1; fi
+            sleep 30
+          done
+          exit 1
+      - uses: actions/download-artifact@v7
+        with:
+          name: DrumAtlas-macOS-${{ matrix.arch }}
+          path: package
+          run-id: 42419737792
+          github-token: ${{ github.token }}
+      - name: Install and validate registered Audio Unit
+        run: |
+          set -euo pipefail
+          sudo installer -pkg package/DrumAtlas-1.0.0-macOS-${{ matrix.arch }}-Setup.pkg -target /
+          component='/Library/Audio/Plug-Ins/Components/DrumAtlas.component'
+          test -f "$component/Contents/Info.plist"
+          plutil -p "$component/Contents/Info.plist"
+          codesign --verify --deep --strict "$component"
+          killall AudioComponentRegistrar 2>/dev/null || true
+          for attempt in $(seq 1 20); do
+            auval -a > package/components.txt 2>&1 || true
+            if auval -v aufx Da01 DAtl > package/auval.txt 2>&1; then
+              cat package/auval.txt
+              grep -q 'AU VALIDATION SUCCEEDED' package/auval.txt
+              exit 0
+            fi
+            cat package/auval.txt
+            sleep 3
+          done
+          exit 1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: DrumAtlas-macOS-${{ matrix.arch }}-validation
+          path: |
+            package/auval.txt
+            package/components.txt
+          retention-days: 14
