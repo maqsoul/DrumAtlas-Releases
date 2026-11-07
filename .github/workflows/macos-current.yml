@@ -61,8 +61,8 @@ jobs:
           cp "$runtime" "$GITHUB_WORKSPACE/models/libonnxruntime.dylib"
       - name: Verify model runtime architecture and loading
         run: |
-          lipo -verify_arch ${{ matrix.arch }} models/libonnxruntime.dylib
-          lipo -verify_arch ${{ matrix.arch }} models/libsndfile.dylib
+          lipo models/libonnxruntime.dylib -verify_arch ${{ matrix.arch }}
+          lipo models/libsndfile.dylib -verify_arch ${{ matrix.arch }}
           python3 - <<'PY'
           import ctypes,pathlib
           for name in ['libonnxruntime.dylib','libsndfile.dylib']:
