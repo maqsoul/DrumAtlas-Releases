@@ -1,0 +1,98 @@
+name: DrumAtlas current macOS installers
+on:
+  workflow_dispatch:
+  push:
+    branches: [packaging-20261108]
+    paths: [DrumAtlas-current-source.tar.gz, .github/workflows/macos-current.yml]
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: juce-framework/JUCE
+          ref: 9.0.3
+          path: dependencies/JUCE
+          persist-credentials: false
+      - name: Extract current source
+        run: |
+          mkdir source
+          tar -xzf DrumAtlas-current-source.tar.gz -C source --strip-components=1
+      - name: Build AU, VST3, application and checks
+        run: |
+          cmake -S source -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+            -DJUCE_DIR="$GITHUB_WORKSPACE/dependencies/JUCE" -DDRUMATLAS_TESTS=ON \
+            -DDRUMATLAS_ACTIVATION_URL=https://drumatlas-activation.miras-maksat.workers.dev/v1/activate \
+            -DDRUMATLAS_UPDATE_URL=https://raw.githubusercontent.com/maqsoul/DrumAtlas-Releases/main/stable.json
+          cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_AU DrumAtlas_Standalone DrumAtlasEditTests DrumAtlasVisualMeterTests
+          ctest --test-dir build --output-on-failure -R '^(pitch-tempo-license|preview-visual-meter)$' --timeout 180
+      - name: Fetch shared models and decoder
+        run: |
+          python3 source/Installer/fetch-mac-models.py models
+          python3 source/Installer/fetch-quality-models.py models
+          python3 source/Installer/fetch-mac-decoder.py models ${{ matrix.arch }}
+      - name: Build matching Intel ONNX runtime
+        if: matrix.arch == 'x86_64'
+        run: |
+          git clone --depth 1 --branch v1.24.4 --recurse-submodules --shallow-submodules https://github.com/microsoft/onnxruntime.git dependencies/onnxruntime
+          python3 -m venv runtime-env
+          runtime-env/bin/python -m pip install numpy packaging flatbuffers protobuf
+          export PATH="$GITHUB_WORKSPACE/runtime-env/bin:$PATH"
+          cd dependencies/onnxruntime
+          ./build.sh --config Release --build_shared_lib --parallel 3 --skip_tests --compile_no_warning_as_error --osx_arch x86_64 --cmake_extra_defines CMAKE_OSX_DEPLOYMENT_TARGET=14.0 onnxruntime_BUILD_UNIT_TESTS=OFF
+          find build -name 'libonnxruntime*.dylib' -type f -exec cp {} "$GITHUB_WORKSPACE/models/" \;
+          runtime=$(find build -name 'libonnxruntime.1.24.4.dylib' -type f | head -1)
+          test -n "$runtime"
+          cp "$runtime" "$GITHUB_WORKSPACE/models/libonnxruntime.dylib"
+      - name: Verify model runtime architecture and loading
+        run: |
+          lipo -verify_arch ${{ matrix.arch }} models/libonnxruntime.dylib
+          lipo -verify_arch ${{ matrix.arch }} models/libsndfile.dylib
+          python3 - <<'PY'
+          import ctypes,pathlib
+          for name in ['libonnxruntime.dylib','libsndfile.dylib']:
+              lib=ctypes.CDLL(str(pathlib.Path('models',name).resolve()))
+              print('Loaded',name)
+          PY
+      - name: Package current full installer
+        env:
+          DRUMATLAS_BUILD_DIR: ${{ github.workspace }}/build
+          DRUMATLAS_MODEL_DIR: ${{ github.workspace }}/models
+        run: bash source/Installer/package-current-macos.sh
+      - name: Validate installed AU
+        run: |
+          sudo installer -pkg build/DrumAtlas-1.0.0-macOS-${{ matrix.arch }}-Setup.pkg -target /
+          killall AudioComponentRegistrar 2>/dev/null || true
+          auval -v aufx Da01 DAtl | tee build/auval.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DrumAtlas-macOS-${{ matrix.arch }}
+          path: |
+            build/DrumAtlas-1.0.0-macOS-*-Setup.pkg
+            build/*.sha256
+            build/auval.txt
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: macOS-diagnostics-${{ matrix.arch }}
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/CMakeFiles/CMakeConfigureLog.yaml
+          retention-days: 7
