@@ -78,7 +78,15 @@ jobs:
         run: |
           sudo installer -pkg build/DrumAtlas-1.0.0-macOS-${{ matrix.arch }}-Setup.pkg -target /
           killall AudioComponentRegistrar 2>/dev/null || true
-          auval -v aufx Da01 DAtl | tee build/auval.txt
+          validated=false
+          for attempt in $(seq 1 20); do
+            if auval -v aufx Da01 DAtl > build/auval.txt 2>&1; then
+              if grep -q 'AU VALIDATION SUCCEEDED' build/auval.txt; then validated=true; break; fi
+            fi
+            sleep 3
+          done
+          cat build/auval.txt
+          test "$validated" = true
       - uses: actions/upload-artifact@v7
         with:
           name: DrumAtlas-macOS-${{ matrix.arch }}
