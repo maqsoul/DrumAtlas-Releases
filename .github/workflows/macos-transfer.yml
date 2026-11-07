@@ -1,0 +1,111 @@
+name: Transfer packaged Mac installers
+on:
+  workflow_dispatch:
+  push:
+    branches: [packaging-20261108]
+    paths: [.github/workflows/macos-transfer.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - name: Wait for package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 160); do
+            count=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42419737792/artifacts --jq ".artifacts | map(select(.name == \"DrumAtlas-macOS-$TARGET_ARCH\")) | length")
+            if [ "$count" -gt 0 ]; then exit 0; fi
+            status=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42419737792/jobs --jq ".jobs[] | select(.name | contains(\"$TARGET_ARCH\")) | .status")
+            if [ "$status" = completed ]; then echo 'Build finished without package'; exit 1; fi
+            sleep 30
+          done
+          exit 1
+      - uses: actions/download-artifact@v7
+        with:
+          name: DrumAtlas-macOS-${{ matrix.arch }}
+          path: package
+          run-id: 42419737792
+          github-token: ${{ github.token }}
+      - name: Verify checksum and split transfer files
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          pkg="DrumAtlas-1.0.0-macOS-$ARCH-Setup.pkg"
+          expected=$(awk '{print $1}' "package/$pkg.sha256")
+          actual=$(sha256sum "package/$pkg" | awk '{print $1}')
+          test "$expected" = "$actual"
+          mkdir parts
+          split -b 400000000 -d -a 2 "package/$pkg" "parts/$pkg.part"
+          cp "package/$pkg.sha256" parts/
+          (cd parts && sha256sum *.part* > PARTS-SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mac-${{ matrix.arch }}-part00
+          path: |
+            parts/*.part00
+            parts/*SHA256SUMS.txt
+            parts/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mac-${{ matrix.arch }}-part01
+          path: |
+            parts/*.part01
+            parts/*SHA256SUMS.txt
+            parts/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mac-${{ matrix.arch }}-part02
+          path: |
+            parts/*.part02
+            parts/*SHA256SUMS.txt
+            parts/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mac-${{ matrix.arch }}-part03
+          path: |
+            parts/*.part03
+            parts/*SHA256SUMS.txt
+            parts/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mac-${{ matrix.arch }}-part04
+          path: |
+            parts/*.part04
+            parts/*SHA256SUMS.txt
+            parts/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mac-${{ matrix.arch }}-part05
+          path: |
+            parts/*.part05
+            parts/*SHA256SUMS.txt
+            parts/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
