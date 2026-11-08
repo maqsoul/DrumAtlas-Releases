@@ -45,8 +45,13 @@ jobs:
             -DJUCE_DIR="$GITHUB_WORKSPACE/dependencies/JUCE" -DDRUMATLAS_TESTS=ON \
             -DDRUMATLAS_ACTIVATION_URL=https://drumatlas-activation.miras-maksat.workers.dev/v1/activate \
             -DDRUMATLAS_UPDATE_URL=https://raw.githubusercontent.com/maqsoul/DrumAtlas-Releases/main/stable.json
-          cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_AU DrumAtlas_Standalone DrumAtlasEditTests DrumAtlasVisualMeterTests
+          cmake --build build --parallel 3 --target DrumAtlas_VST3 DrumAtlas_AU DrumAtlas_Standalone DrumAtlasEditTests DrumAtlasVisualMeterTests DrumAtlasSmoke
           ctest --test-dir build --output-on-failure -R '^(pitch-tempo-license|preview-visual-meter)$' --timeout 180
+      - name: Verify reference and stem session recall
+        run: |
+          set -o pipefail
+          DRUMATLAS_CACHE_DIR="$GITHUB_WORKSPACE/build/session-cache" \
+            build/DrumAtlasSmoke_artefacts/Release/DrumAtlasSmoke --session "$GITHUB_WORKSPACE/build/session-fixtures" | tee build/session-recall.txt
       - name: Fetch shared models and decoder
         run: |
           python3 source/Installer/fetch-mac-models.py models
@@ -106,6 +111,7 @@ jobs:
             build/*.sha256
             build/auval.txt
             build/synth-installed.json
+            build/session-recall.txt
           retention-days: 14
           compression-level: 0
       - uses: actions/upload-artifact@v7
@@ -116,4 +122,5 @@ jobs:
             build/Testing/Temporary/LastTest.log
             build/CMakeFiles/CMakeConfigureLog.yaml
             models/SynthLayers/verification.json
+            build/session-recall.txt
           retention-days: 7
