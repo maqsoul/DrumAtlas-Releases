@@ -1,4 +1,4 @@
-name: Transfer offline Synth Layers Mac installers
+name: Transfer session recall Mac installers
 on:
   workflow_dispatch:
   push:
@@ -23,9 +23,9 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 160); do
-            count=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42429046269/artifacts --jq ".artifacts | map(select(.name == \"DrumAtlas-Synth-macOS-$TARGET_ARCH\")) | length")
+            count=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42527288848/artifacts --jq ".artifacts | map(select(.name == \"DrumAtlas-Synth-macOS-$TARGET_ARCH\")) | length")
             if [ "$count" -gt 0 ]; then exit 0; fi
-            status=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42429046269/jobs --jq ".jobs[] | select(.name | contains(\"$TARGET_ARCH\")) | .status")
+            status=$(gh api repos/maqsoul/DrumAtlas-Releases/actions/runs/42527288848/jobs --jq ".jobs[] | select(.name | contains(\"$TARGET_ARCH\")) | .status")
             if [ "$status" = completed ]; then echo 'Build finished without package'; exit 1; fi
             sleep 30
           done
@@ -34,7 +34,7 @@ jobs:
         with:
           name: DrumAtlas-Synth-macOS-${{ matrix.arch }}
           path: package
-          run-id: 42429046269
+          run-id: 42527288848
           github-token: ${{ github.token }}
       - name: Verify checksum and split transfer files
         env:
@@ -269,3 +269,4 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+
